@@ -78,14 +78,139 @@ site_colors <- setNames(viridis(length(unique_sites), option = "D"), unique_site
 pca_data$Colour <- site_colors[as.character(pca_data$Ancient_Site)]
 
 # Assign different colors to Ovilava and Austria_Ovilava
-pca_data$Colour[pca_data$Ancient_Site == "Ovilava"] <- "#5DC863FF"  # Green from viridis
-pca_data$Colour[pca_data$Ancient_Site == "Austria_Ovilava"] <- "#F89441"  # Different color
-pca_data$Colour[pca_data$Broad_Populations == "Modern"] <- "grey50"
+pca_data$Colour[pca_data$Ancient_Site == "Ovilava"] <- "#F89441"  # Green from viridis
+pca_data$Colour[pca_data$Ancient_Site == "Austria_Ovilava"] <-"#5DC863FF"  # Different color
+pca_data$Colour[pca_data$Broad_Populations == "Modern"] <- "red"
+
+
+
+
+# Define transparency levels using alpha
+pca_data$Alpha <- "Other"  # Default transparency for all sites
+pca_data$Alpha[pca_data$Ancient_Site == "Ovilava"] <- "Ovilava"
+pca_data$Alpha[pca_data$Broad_Populations == "Modern"] <- "Modern"
+
+# Convert to factor to ensure mapping works in ggplot
+pca_data$Alpha <- factor(pca_data$Alpha, levels = c("Ovilava", "Modern", "Other"))
+
 
 
 
 
 ## Plot
+
+# This is almost perfect, BUT I noticed Modern is being called Ancient
+ggplot() +
+  # Plot Modern as unfilled gray circles with transparency 0.1
+  geom_point(data = subset(pca_data, Ancient_Site == "Modern"), 
+             aes(x = PC2, y = PC1, color = Ancient_Site), alpha = 0.1, size = 3) +
+  # Plot Ancient Sites with transparency 0.2
+  geom_point(data = subset(pca_data, Ancient_Site != "Modern" & Ancient_Site != "Ovilava"), 
+             aes(x = PC2, y = PC1, color = Ancient_Site), alpha = 0.2, size = 3) +
+  # Plot Ovilava with full opacity
+  geom_point(data = subset(pca_data, Ancient_Site == "Ovilava"), 
+             aes(x = PC2, y = PC1, color = Ancient_Site), alpha = 1, size = 3) +
+  scale_color_manual(
+    values = setNames(pca_data$Colour, pca_data$Ancient_Site),
+    name = "Ancient Site"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),  # Remove grid
+    plot.title = element_text(size = 20),  # Increase main title size
+    axis.title = element_text(size = 15),  # Increase axis title size
+    legend.text = element_text(size = 15),
+    legend.title = element_text(size = 15)# Increase legend text size
+  ) +
+  labs(
+    title = "PCA of Ovilava Individuals with Published Ancient and Modern Populations",
+    x = paste0("PC2 (", pc2_var, "%)"),
+    y = paste0("PC1 (", pc1_var, "%)")
+  )
+
+
+
+
+
+ggplot(pca_data, aes(x = PC2, y = PC1, color = Ancient_Site, alpha = Alpha)) +
+  geom_point(size = 3) +
+  scale_alpha_manual(
+    values = c("Ovilava" = 1, "Modern" = 0.1, "Other" = 0.2),
+    guide = "none"  # This removes the Population Type legend
+  ) +
+  scale_color_manual(
+    values = setNames(pca_data$Colour, pca_data$Ancient_Site),
+    name = "Ancient Site"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),  # Remove grid
+    plot.title = element_text(size = 20),  # Increase main title size
+    axis.title = element_text(size = 15)  # Increase axis title size
+  ) +
+  labs(
+    title = "PCA of Ovilava Individuals with Published Ancient and Modern Populations",
+    x = paste0("PC2 (", pc2_var, "%)"),
+    y = paste0("PC1 (", pc1_var, "%)")
+  )
+
+
+
+
+
+# Plot All with Only Ancient Site Legend NOT MODERN LEGEND
+ggplot(pca_data, aes(x = PC2, y = PC1, color = Ancient_Site, alpha = Alpha)) +
+  geom_point() +
+  scale_alpha_manual(
+    values = c("Ovilava" = 1, "Modern" = 0.1, "Other" = 0.2),
+    guide = "none"  # This removes the Population Type legend
+  ) +
+  scale_color_manual(
+    values = setNames(pca_data$Colour, pca_data$Ancient_Site),
+    name = "Ancient Site"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank()  # Remove grid
+  ) +
+  labs(
+    title = "PCA of Ovilava Individuals with Published Ancient and Modern Populations",
+    x = paste0("PC2 (", pc2_var, "%)"),
+    y = paste0("PC1 (", pc1_var, "%)")
+  )
+
+
+
+# Plot Modern, Ovilava, All Ancient with Transparency and Legend
+ggplot(pca_data, aes(x = PC2, y = PC1, color = Ancient_Site, alpha = Alpha)) +
+  geom_point() +
+  scale_alpha_manual(
+    values = c("Ovilava" = 1),
+  ) +
+  scale_alpha_manual(
+    values = c("Modern" = 0.1),
+    name = "Modern Population v62_1240K"
+  ) +
+  scale_alpha_manual(
+    values = c("Other" = 0.2),
+  ) +
+  scale_color_manual(
+    values = setNames(pca_data$Colour, pca_data$Ancient_Site),
+    name = "Ancient Site"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank()  # Remove grid
+  ) +
+  labs(
+    title = "PCA of Ovilava Individuals with Published Ancient and Modern Populations",
+    x = paste0("PC2 (", pc2_var, "%)"),
+    y = paste0("PC1 (", pc1_var, "%)")
+  )
+
+
+
+
 # Plot Modern, Ovilava, All Ancient
 ggplot(pca_data, aes(x = PC2, y = PC1, color = Colour)) +
   geom_point() +
@@ -95,6 +220,13 @@ ggplot(pca_data, aes(x = PC2, y = PC1, color = Colour)) +
   labs(x = paste0("PC2 (", pc2_var, "%)"),
        y = paste0("PC1 (", pc1_var, "%)"))
 
+
+ggplot(pca_data, aes(x = PC2, y = PC1, color = Colour, alpha = Ancient_Site)) +
+  geom_point() +
+  scale_alpha_manual(values = c("Ovilava" = 1, "Austria_Ovilava" = 0.8, "Other" = 0.5)) +
+  scale_color_identity() +
+  theme_minimal() +
+  theme(legend.position = "none")
 
 
 # Create PCA plot MODERN v ANCIENT
