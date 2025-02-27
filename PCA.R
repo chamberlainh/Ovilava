@@ -2,33 +2,50 @@
 ## Author: Heather Chamberlain
 ## Date: February 2025
 
-# Set working directory  
+## Set working directory  
 setwd("/lisc/scratch/anthropology/Pinhasi_group/Ovilava/PCA")
 
-# Load libraries
+## Load libraries
 library("dplyr") # for dataframe management
 library("viridis") # colours
 library("ggplot2") # plotting
 
 
+## Load Files
 # Load PCA .evec file
 pca_data <- read.table("MergedOvilava30k_pcaR_evec_renamed.csv", header = TRUE, sep = "\t")
 
 # Load population files
 ovilava <- read.table("cleaned_my_list.txt", header = FALSE, stringsAsFactors = FALSE)
-published <- read.table("pub_list.txt", header = FALSE, stringsAsFactors = FALSE)
+published <- read.table("pub_list_cleaned.txt", header = FALSE, stringsAsFactors = FALSE)
 modern <- read.table("modern_list_cleaned.txt", header = FALSE, stringsAsFactors = FALSE)
 
-
+## Data Wrangle
 # Prepare pca_data with pop files
   
-pca_data$Population <- ifelse(pca_data$ID %in% ovilava$ID, "Ovilava",
-                              ifelse(pca_data$ID %in% published$ID, "Published",
-                                     ifelse(pca_data$ID %in% modern$ID, "Modern", "Unknown")))
+
+pca_data$Data_Source <- ifelse(pca_data$ID %in% modern$V1 & 
+                                !(pca_data$ID %in% ovilava$V1) & 
+                                !(pca_data$ID %in% published$V1), "Modern",
+                              ifelse(pca_data$ID %in% ovilava$V1, "Ovilava",
+                                     ifelse(pca_data$ID %in% published$V1, "Published", "Unknown")))
 
 
 
+table(pca_data$Data_Source)
 
+pca_data$Site <- NA  # Add Site column with NA values
+
+
+pca_data$Site <- ifelse(pca_data$Data_Source == "Ovilava", "Ovilava", # Keep Ovilava the same
+                        ifelse(pca_data$Data_Source == "Modern",
+                               paste0(sub("_.*", "", pca_data$Population), "_Modern"), # Extract country name and add "Modern"
+                               ifelse(pca_data$Data_Source == "Published",
+                                      sub("_.*", "", pca_data$Population), # Extract country name only for rest of ancient
+                                      pca_data$Site)))  # Retain existing values for other cases
+
+# Check
+# table(pca_data$Site, pca_data$Data_Source)
 
 
 # Define all eigenvalues from the MergedOvilava30k_trim..evec header
@@ -45,74 +62,55 @@ pc2_var <- round(percent_var[2], 2)
 
 
 
-# Add a Broad_Populations column to pca_data
-pca_data$Broad_Populations <- ifelse(pca_data$ID %in% modern$V1, "Modern", "Ancient")
-
-# Reassign "Ovilava" where applicable
-pca_data$Population[pca_data$ID == "I35407.TW"] <- "Ovilava"
-pca_data$Broad_Populations <- ifelse(pca_data$ID %in% ovilava$V1, "Ovilava", pca_data$Broad_Populations)
-pca_data$Broad_Populations[pca_data$Population == "Ovilava"] <- "Ovilava"
-
-unique_populations_ancient <-unique(pca_data$Population[pca_data$Broad_Populations == "Ancient"])
-pca_data$Ancient_Site <- sub("_.*", "", pca_data$Population)
-
-coded_populations_ancient <- unique(pca_data$Ancient_Site)
-subset(pca_data, grepl("Ovilava", Population))
-pca_data$Ancient_Site[pca_data$Ancient_Site == "Ovilava_Published"] <- "Austria_Ovilava"
-
-
 ## Color Assignments
 
-# Define population colors
-pca_data$Colour <- NA  # Initialize column
 
-# Get unique Ancient_Site values, excluding Ovilava
-unique_sites <- unique(pca_data$Ancient_Site[pca_data$Ancient_Site != "Ovilava"])
+# Get unique Published sites
+published_sites <- unique(pca_data$Site[pca_data$Data_Source == "Published"])
 
-# Generate a viridis (option D) color palette
-site_colors <- setNames(viridis(length(unique_sites), option = "D"), unique_sites)
+# Generate viridis colors for Published sites
+published_colors <- viridis(length(published_sites), option = "D")
 
+# Create a named vector for site-to-color mapping
+published_color_map <- setNames(published_colors, published_sites)
 
-
-# Assign colors based on Ancient_Site
-pca_data$Colour <- site_colors[as.character(pca_data$Ancient_Site)]
-
-# Assign different colors to Ovilava and Austria_Ovilava
-pca_data$Colour[pca_data$Ancient_Site == "Ovilava"] <- "#F89441"  # Green from viridis
-pca_data$Colour[pca_data$Ancient_Site == "Austria_Ovilava"] <-"#5DC863FF"  # Different color
-pca_data$Colour[pca_data$Broad_Populations == "Modern"] <- "red"
+# Assign colors
+pca_data$Colour <- ifelse(pca_data$Data_Source == "Ovilava", "#F89441",  # Ovilava as black
+                          ifelse(pca_data$Data_Source == "Modern", "grey",  # Modern as gray
+                                 ifelse(pca_data$Data_Source == "Published",
+                                        published_color_map[pca_data$Site], NA)))  # Use mapped colors for Published sites
 
 
-
-
-# Define transparency levels using alpha
-pca_data$Alpha <- "Other"  # Default transparency for all sites
-pca_data$Alpha[pca_data$Ancient_Site == "Ovilava"] <- "Ovilava"
-pca_data$Alpha[pca_data$Broad_Populations == "Modern"] <- "Modern"
-
-# Convert to factor to ensure mapping works in ggplot
-pca_data$Alpha <- factor(pca_data$Alpha, levels = c("Ovilava", "Modern", "Other"))
-
+# Check if the assignment worked
+#table(pca_data$Site, pca_data$Colour)
+#table(pca_data$Site)
 
 
 
 
 ## Plot
 
-# This is almost perfect, BUT I noticed Modern is being called Ancient
+# WORKS
+# Replace NA in Site with "Modern"
+pca_data$Site[is.na(pca_data$Site)] <- "Modern"
+
+# Convert Site to a factor to preserve ordering
+pca_data$Site <- factor(pca_data$Site)
+
+# Plot
 ggplot() +
-  # Plot Modern as unfilled gray circles with transparency 0.1
-  geom_point(data = subset(pca_data, Ancient_Site == "Modern"), 
-             aes(x = PC2, y = PC1, color = Ancient_Site), alpha = 0.1, size = 3) +
-  # Plot Ancient Sites with transparency 0.2
-  geom_point(data = subset(pca_data, Ancient_Site != "Modern" & Ancient_Site != "Ovilava"), 
-             aes(x = PC2, y = PC1, color = Ancient_Site), alpha = 0.2, size = 3) +
+  # Plot Modern as unfilled red circles with transparency 0.1
+  geom_point(data = subset(pca_data, Data_Source == "Modern"), 
+             aes(x = PC2, y = PC1, color = Site), alpha = 0.1, size = 3) +
+  # Plot Published sites with transparency 0.2
+  geom_point(data = subset(pca_data, Data_Source == "Published"), 
+             aes(x = PC2, y = PC1, color = Site), alpha = 0.2, size = 3) +
   # Plot Ovilava with full opacity
-  geom_point(data = subset(pca_data, Ancient_Site == "Ovilava"), 
-             aes(x = PC2, y = PC1, color = Ancient_Site), alpha = 1, size = 3) +
+  geom_point(data = subset(pca_data, Data_Source == "Ovilava"), 
+             aes(x = PC2, y = PC1, color = Site), alpha = 1, size = 3) +
   scale_color_manual(
-    values = setNames(pca_data$Colour, pca_data$Ancient_Site),
-    name = "Ancient Site"
+    values = setNames(pca_data$Colour, pca_data$Site),
+    name = "Site"
   ) +
   theme_minimal() +
   theme(
@@ -120,7 +118,7 @@ ggplot() +
     plot.title = element_text(size = 20),  # Increase main title size
     axis.title = element_text(size = 15),  # Increase axis title size
     legend.text = element_text(size = 15),
-    legend.title = element_text(size = 15)# Increase legend text size
+    legend.title = element_text(size = 15) # Increase legend text size
   ) +
   labs(
     title = "PCA of Ovilava Individuals with Published Ancient and Modern Populations",
@@ -130,23 +128,36 @@ ggplot() +
 
 
 
+# WORKS
+# Define the desired order of the legend
+site_levels <- c("Ovilava", published_sites, "Modern")
 
 
-ggplot(pca_data, aes(x = PC2, y = PC1, color = Ancient_Site, alpha = Alpha)) +
-  geom_point(size = 3) +
-  scale_alpha_manual(
-    values = c("Ovilava" = 1, "Modern" = 0.1, "Other" = 0.2),
-    guide = "none"  # This removes the Population Type legend
-  ) +
+# Convert Site column to factor with specified levels
+pca_data$Site <- factor(pca_data$Site, levels = site_levels)
+
+# Plot
+ggplot() +
+  # Plot Modern as unfilled red circles with transparency 0.1
+  geom_point(data = subset(pca_data, Data_Source == "Modern"), 
+             aes(x = PC2, y = PC1, color = Site), alpha = 0.1, size = 3) +
+  # Plot Published sites with transparency 0.2
+  geom_point(data = subset(pca_data, Data_Source == "Published"), 
+             aes(x = PC2, y = PC1, color = Site), alpha = 0.2, size = 3) +
+  # Plot Ovilava with full opacity
+  geom_point(data = subset(pca_data, Data_Source == "Ovilava"), 
+             aes(x = PC2, y = PC1, color = Site), alpha = 1, size = 3) +
   scale_color_manual(
-    values = setNames(pca_data$Colour, pca_data$Ancient_Site),
-    name = "Ancient Site"
+    values = setNames(pca_data$Colour, pca_data$Site),
+    name = "Site"
   ) +
   theme_minimal() +
   theme(
     panel.grid = element_blank(),  # Remove grid
     plot.title = element_text(size = 20),  # Increase main title size
-    axis.title = element_text(size = 15)  # Increase axis title size
+    axis.title = element_text(size = 15),  # Increase axis title size
+    legend.text = element_text(size = 15),
+    legend.title = element_text(size = 15) # Increase legend text size
   ) +
   labs(
     title = "PCA of Ovilava Individuals with Published Ancient and Modern Populations",
@@ -157,21 +168,28 @@ ggplot(pca_data, aes(x = PC2, y = PC1, color = Ancient_Site, alpha = Alpha)) +
 
 
 
-
-# Plot All with Only Ancient Site Legend NOT MODERN LEGEND
-ggplot(pca_data, aes(x = PC2, y = PC1, color = Ancient_Site, alpha = Alpha)) +
-  geom_point() +
-  scale_alpha_manual(
-    values = c("Ovilava" = 1, "Modern" = 0.1, "Other" = 0.2),
-    guide = "none"  # This removes the Population Type legend
-  ) +
+# Plots all FINALLY
+ggplot() +
+  # Plot Modern as unfilled red circles with transparency 0.1
+  geom_point(data = subset(pca_data, Data_Source == "Modern"), 
+             aes(x = PC2, y = PC1, color = Site), alpha = 0.1, size = 3) +
+  # Plot Published sites with transparency 0.2
+  geom_point(data = subset(pca_data, Data_Source == "Published"), 
+             aes(x = PC2, y = PC1, color = Site), alpha = 0.2, size = 3) +
+  # Plot Ovilava with full opacity
+  geom_point(data = subset(pca_data, Data_Source == "Ovilava"), 
+             aes(x = PC2, y = PC1, color = Site), alpha = 1, size = 3) +
   scale_color_manual(
-    values = setNames(pca_data$Colour, pca_data$Ancient_Site),
-    name = "Ancient Site"
+    values = setNames(pca_data$Colour, pca_data$Site),
+    name = "Site"
   ) +
   theme_minimal() +
   theme(
-    panel.grid = element_blank()  # Remove grid
+    panel.grid = element_blank(),  # Remove grid
+    plot.title = element_text(size = 20),  # Increase main title size
+    axis.title = element_text(size = 15),  # Increase axis title size
+    legend.text = element_text(size = 15),
+    legend.title = element_text(size = 15) # Increase legend text size
   ) +
   labs(
     title = "PCA of Ovilava Individuals with Published Ancient and Modern Populations",
@@ -181,32 +199,8 @@ ggplot(pca_data, aes(x = PC2, y = PC1, color = Ancient_Site, alpha = Alpha)) +
 
 
 
-# Plot Modern, Ovilava, All Ancient with Transparency and Legend
-ggplot(pca_data, aes(x = PC2, y = PC1, color = Ancient_Site, alpha = Alpha)) +
-  geom_point() +
-  scale_alpha_manual(
-    values = c("Ovilava" = 1),
-  ) +
-  scale_alpha_manual(
-    values = c("Modern" = 0.1),
-    name = "Modern Population v62_1240K"
-  ) +
-  scale_alpha_manual(
-    values = c("Other" = 0.2),
-  ) +
-  scale_color_manual(
-    values = setNames(pca_data$Colour, pca_data$Ancient_Site),
-    name = "Ancient Site"
-  ) +
-  theme_minimal() +
-  theme(
-    panel.grid = element_blank()  # Remove grid
-  ) +
-  labs(
-    title = "PCA of Ovilava Individuals with Published Ancient and Modern Populations",
-    x = paste0("PC2 (", pc2_var, "%)"),
-    y = paste0("PC1 (", pc1_var, "%)")
-  )
+
+
 
 
 
