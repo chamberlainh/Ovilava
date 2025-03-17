@@ -64,7 +64,6 @@ pc2_var <- round(percent_var[2], 2)
 
 ## Color Assignments
 
-
 # Get unique Published sites
 published_sites <- unique(pca_data$Site[pca_data$Data_Source == "Published"])
 
@@ -87,6 +86,29 @@ pca_data$Colour <- ifelse(pca_data$Data_Source == "Ovilava", "#F89441",  # Ovila
 
 
 
+## Get sums for each population
+
+# Count the number of samples for each population
+#population_counts <- as.data.frame(table(pca_data$Data_Source))
+#colnames(population_counts) <- c("Population", "Sum")
+
+# Count the number of samples for each unique Published site
+#published_counts <- as.data.frame(table(pca_data$Site[pca_data$Data_Source == "Published"]))
+#colnames(published_counts) <- c("Population", "Sum")
+
+# Remove the "Published" row from the main count
+#population_counts <- subset(population_counts, Population != "Published")
+
+# Combine Ovilava, Modern, and detailed Published sites
+#final_counts <- rbind(population_counts, published_counts)
+
+
+# Save as a tab-delimited text file
+#write.table(final_counts, "population_summary.txt", sep = "\t", row.names = FALSE, quote = FALSE)
+
+
+
+
 
 ## Plot
 
@@ -97,7 +119,7 @@ pca_data$Site[is.na(pca_data$Site)] <- "Modern"
 # Convert Site to a factor to preserve ordering
 pca_data$Site <- factor(pca_data$Site)
 
-# Plot
+# Plot BEST
 ggplot() +
   # Plot Modern as unfilled red circles with transparency 0.1
   geom_point(data = subset(pca_data, Data_Source == "Modern"), 
@@ -125,6 +147,184 @@ ggplot() +
     x = paste0("PC2 (", pc2_var, "%)"),
     y = paste0("PC1 (", pc1_var, "%)")
   )
+
+
+
+
+## START EXPLORING POPS
+
+## Ovilava only - Look for outliers
+library(ggrepel)
+# Plot Ovilava with Sample_ID labels
+ggplot() +
+  # Plot Ovilava with full opacity
+  geom_point(data = subset(pca_data, Data_Source == "Ovilava"), 
+             aes(x = PC2, y = PC1, color = Site), alpha = 1, size = 3) +
+  # Add Sample_ID labels
+  geom_text_repel(data = subset(pca_data, Data_Source == "Ovilava"), 
+                  aes(x = PC2, y = PC1, label = ID), 
+                  size = 3, max.overlaps = 30) + 
+  scale_color_manual(
+    values = setNames(pca_data$Colour, pca_data$Site),
+    name = "Site"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),  # Remove grid
+    plot.title = element_text(size = 20),  # Increase main title size
+    axis.title = element_text(size = 15),  # Increase axis title size
+    legend.text = element_text(size = 15),
+    legend.title = element_text(size = 15) # Increase legend text size
+  ) +
+  labs(
+    title = "PCA of Ovilava Individuals",
+    x = paste0("PC2 (", pc2_var, "%)"),
+    y = paste0("PC1 (", pc1_var, "%)")
+  )
+
+
+
+
+## Ovilava and Published - No Modern
+library(ggrepel)  # Make sure you have this package loaded
+
+ggplot() +
+  # Plot Published sites with transparency 0.2
+  geom_point(data = subset(pca_data, Data_Source == "Published"), 
+             aes(x = PC2, y = PC1, color = Site), alpha = 0.2, size = 3) +
+  
+  # Plot Ovilava with full opacity
+  geom_point(data = subset(pca_data, Data_Source == "Ovilava"), 
+             aes(x = PC2, y = PC1, color = Site), alpha = 1, size = 3) +
+  
+  # Add Sample_ID labels for Ovilava samples
+  geom_text_repel(data = subset(pca_data, Data_Source == "Ovilava"), 
+                  aes(x = PC2, y = PC1, label = ID), 
+                  size = 4, max.overlaps = 20) +  # Adjust size and max.overlaps as needed
+  
+  # Custom colors
+  scale_color_manual(
+    values = setNames(pca_data$Colour, pca_data$Site),
+    name = "Site"
+  ) +
+  
+  # Theme adjustments
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),  # Remove grid
+    plot.title = element_text(size = 20),  # Increase title size
+    axis.title = element_text(size = 15),  # Increase axis title size
+    legend.text = element_text(size = 15),
+    legend.title = element_text(size = 15) # Increase legend text size
+  ) +
+  
+  # Labels
+  labs(
+    title = "PCA of Ovilava and Published Ancient Populations",
+    x = paste0("PC2 (", pc2_var, "%)"),
+    y = paste0("PC1 (", pc1_var, "%)")
+  )
+
+
+
+## Ovilava and Published - With Austria Labelled
+library(ggrepel)  # Ensure the package is loaded
+
+ggplot() +
+  # Plot Published sites with transparency 0.2
+  geom_point(data = subset(pca_data, Data_Source == "Published"), 
+             aes(x = PC2, y = PC1, color = Site), alpha = 0.2, size = 3) +
+  
+  # Plot Ovilava with full opacity
+  geom_point(data = subset(pca_data, Data_Source == "Ovilava"), 
+             aes(x = PC2, y = PC1, color = Site), alpha = 1, size = 3) +
+  
+  # Add Sample_ID labels for Ovilava samples
+  geom_text_repel(data = subset(pca_data, Data_Source == "Ovilava"), 
+                  aes(x = PC2, y = PC1, label = ID), 
+                  size = 4, max.overlaps = 20) +  # Adjust overlap limit as needed
+  
+  # Add Sample_ID labels for Austria samples within Published data
+  geom_text_repel(data = subset(pca_data, Data_Source == "Published" & Site == "Austria"), 
+                  aes(x = PC2, y = PC1, label = ID), 
+                  size = 4, max.overlaps = 20, color = "red") +  # Labels in black for contrast
+  
+  # Custom colors
+  scale_color_manual(
+    values = setNames(pca_data$Colour, pca_data$Site),
+    name = "Site"
+  ) +
+  
+  # Theme adjustments
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),  # Remove grid
+    plot.title = element_text(size = 20),  # Increase title size
+    axis.title = element_text(size = 15),  # Increase axis title size
+    legend.text = element_text(size = 15),
+    legend.title = element_text(size = 15) # Increase legend text size
+  ) +
+  
+  # Labels
+  labs(
+    title = "PCA of Ovilava and Published Ancient Populations",
+    x = paste0("PC2 (", pc2_var, "%)"),
+    y = paste0("PC1 (", pc1_var, "%)")
+  )
+
+
+
+
+## Ovilava and Published - Explore pops
+library(ggrepel)  # Ensure the package is loaded
+
+ggplot() +
+  # Plot Published sites with transparency 0.2
+  geom_point(data = subset(pca_data, Data_Source == "Published"), 
+             aes(x = PC2, y = PC1, color = Site), alpha = 0.2, size = 3) +
+  
+  # Plot Ovilava with full opacity
+  geom_point(data = subset(pca_data, Data_Source == "Ovilava"), 
+             aes(x = PC2, y = PC1, color = Site), alpha = 1, size = 3) +
+  
+  # Add Sample_ID labels for Ovilava samples
+  geom_text_repel(data = subset(pca_data, Data_Source == "Ovilava"), 
+                  aes(x = PC2, y = PC1, label = ID), 
+                  size = 4, max.overlaps = 20) +  # Adjust overlap limit as needed
+  
+  # Add Sample_ID labels for Austria samples within Published data
+  geom_text_repel(data = subset(pca_data, Data_Source == "Published" & Site == "Croatia"), 
+                  aes(x = PC2, y = PC1, label = ID), 
+                  size = 4, max.overlaps = 20, color = "red") +  # Labels in black for contrast
+  
+  # Custom colors
+  scale_color_manual(
+    values = setNames(pca_data$Colour, pca_data$Site),
+    name = "Site"
+  ) +
+  
+  # Theme adjustments
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),  # Remove grid
+    plot.title = element_text(size = 20),  # Increase title size
+    axis.title = element_text(size = 15),  # Increase axis title size
+    legend.text = element_text(size = 15),
+    legend.title = element_text(size = 15) # Increase legend text size
+  ) +
+  
+  # Labels
+  labs(
+    title = "PCA of Ovilava and Published Ancient Populations",
+    x = paste0("PC2 (", pc2_var, "%)"),
+    y = paste0("PC1 (", pc1_var, "%)")
+  )
+
+
+
+
+
+
 
 
 
