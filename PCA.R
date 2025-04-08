@@ -326,6 +326,61 @@ ggplot() +
 
 
 
+## Surrounding Countries - Published
+library(ggrepel)  # Ensure package is loaded
+
+# Define the Best Starting Countries
+best_countries <- c("Austria", "Germany", "Czechia", "Hungary", "Slovakia", "Slovenia")
+
+# Subset Published samples to include only these countries
+filtered_published <- subset(pca_data, Data_Source == "Published" & Site %in% best_countries)
+
+ggplot() +
+  # Plot Selected Published sites with transparency 0.2
+  geom_point(data = filtered_published, 
+             aes(x = PC2, y = PC1, color = Site), alpha = 0.2, size = 3) +
+  
+  # Plot Ovilava with full opacity
+  geom_point(data = subset(pca_data, Data_Source == "Ovilava"), 
+             aes(x = PC2, y = PC1, color = Site), alpha = 1, size = 3) +
+  
+  # Add Sample_ID labels for Ovilava samples
+  geom_text_repel(data = subset(pca_data, Data_Source == "Ovilava"), 
+                  aes(x = PC2, y = PC1, label = ID), 
+                  size = 4, max.overlaps = 20) +  # Adjust overlap limit as needed
+  
+  # Custom colors
+  scale_color_manual(
+    values = setNames(pca_data$Colour, pca_data$Site),
+    name = "Site"
+  ) +
+  
+  # Theme adjustments
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),  # Remove grid
+    plot.title = element_text(size = 20),  # Increase title size
+    axis.title = element_text(size = 15),  # Increase axis title size
+    legend.text = element_text(size = 15),
+    legend.title = element_text(size = 15) # Increase legend text size
+  ) +
+  
+  # Labels
+  labs(
+    title = "PCA of Ovilava and Neighboring Ancient Populations",
+    x = paste0("PC2 (", pc2_var, "%)"),
+    y = paste0("PC1 (", pc1_var, "%)")
+  )
+
+
+
+
+
+
+
+
+
+
 
 
 # WORKS
