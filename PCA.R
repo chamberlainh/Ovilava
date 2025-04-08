@@ -374,6 +374,56 @@ ggplot() +
 
 
 
+## Plot one country at a time
+library(ggrepel)
+
+# Define the site to display from Published data
+selected_site <- "Poland"
+
+ggplot() +
+  # Plot only the selected Published site with transparency 0.2
+  geom_point(data = subset(pca_data, Data_Source == "Published" & Site == selected_site), 
+             aes(x = PC2, y = PC1, color = Site), alpha = 0.2, size = 3) +
+  
+  # Plot Ovilava samples with full opacity
+  geom_point(data = subset(pca_data, Data_Source == "Ovilava"), 
+             aes(x = PC2, y = PC1, color = Site), alpha = 1, size = 3) +
+  
+  # Add labels for Ovilava samples
+  geom_text_repel(data = subset(pca_data, Data_Source == "Ovilava"), 
+                  aes(x = PC2, y = PC1, label = ID), 
+                  size = 4, max.overlaps = 20) +
+  
+  # Add labels for TARGET COUNTRY samples within Published data
+  #geom_text_repel(data = subset(pca_data, Data_Source == "Published" & Site == "France"), 
+                  #aes(x = PC2, y = PC1, label = ID), 
+                  #size = 4, max.overlaps = 20, color = "red") +
+  
+  # Custom colors
+  scale_color_manual(
+    values = setNames(pca_data$Colour, pca_data$Site),
+    name = "Site"
+  ) +
+  
+  # Theme adjustments
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    plot.title = element_text(size = 20),
+    axis.title = element_text(size = 15),
+    legend.text = element_text(size = 15),
+    legend.title = element_text(size = 15)
+  ) +
+  
+  # Labels
+  labs(
+    title = paste("PCA of Ovilava and", selected_site),
+    x = paste0("PC2 (", pc2_var, "%)"),
+    y = paste0("PC1 (", pc1_var, "%)")
+  )
+
+
+
 
 
 
