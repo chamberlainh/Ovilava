@@ -351,6 +351,371 @@ matching_ids <- intersect(ams_ids, ovilava_ids)
 
 
 
+# Plot all the COUNTRY roman and medieval data with Hungary removed
+
+# Assign a Country value to Ovilava individuals (e.g., "Austria" or "Ovilava")
+pca_data$Country <- ifelse(pca_data$Data_Source == "Ovilava", "Ovilava", NA)
+
+# For the rest, extract from Population as you did
+pca_data$Country <- ifelse(is.na(pca_data$Country),
+                           sub("_.*", "", pca_data$Population),
+                           pca_data$Country)
+library(ggrepel)  # for better text labels
+
+# Combine data
+combined_data <- rbind(roman_medieval_data_no_hungary,
+                       subset(pca_data, Data_Source == "Ovilava"))
+
+# Create the PCA plot with labels for Ovilava samples
+ggplot(combined_data, aes(x = PC2, y = PC1, color = Country)) +
+  geom_point(alpha = 0.7, size = 3) +
+  # Add labels to Ovilava points only
+  geom_text_repel(
+    data = subset(combined_data, Data_Source == "Ovilava"),
+    aes(label = ID),
+    size = 3,
+    max.overlaps = 100,
+    box.padding = 0.5,
+    point.padding = 0.3,
+    segment.size = 0.2
+  ) +
+  scale_color_viridis(discrete = TRUE) +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    plot.title = element_text(size = 20),
+    axis.title = element_text(size = 15),
+    legend.text = element_text(size = 12),
+    legend.title = element_text(size = 15)
+  ) +
+  labs(
+    title = "PCA of Roman, Medieval, and Ovilava Populations by Country (Excluding Hungary)",
+    x = paste0("PC2 (", pc2_var, "%)"),
+    y = paste0("PC1 (", pc1_var, "%)"),
+    color = "Country"
+  )
 
 
 
+
+## Modern, Roman, Medieval, Ovilava, NO HUNGRY
+
+plot_data <- subset(
+  pca_data,
+  Country != "Hungary" & Data_Source %in% c("Modern", "Roman", "Medieval", "Ovilava")
+)
+
+library(ggplot2)
+library(ggrepel)
+
+ggplot(plot_data, aes(x = PC2, y = PC1, color = Data_Source)) +
+  geom_point(alpha = 0.7, size = 3) +
+  geom_text_repel(
+    data = subset(plot_data, Data_Source == "Ovilava"),
+    aes(label = ID),
+    size = 3,
+    box.padding = 0.5,
+    point.padding = 0.3,
+    segment.size = 0.2,
+    max.overlaps = 100
+  ) +
+  scale_color_manual(values = c("Modern" = "gray",
+                                "Roman" = "#440154FF",
+                                "Medieval" = "#FDE725FF",
+                                "Ovilava" = "orange")) +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    plot.title = element_text(size = 20),
+    axis.title = element_text(size = 15),
+    legend.text = element_text(size = 12),
+    legend.title = element_text(size = 15)
+  ) +
+  labs(
+    title = "PCA of Modern, Roman, Medieval, and Ovilava Samples (Excluding Hungary)",
+    x = paste0("PC2 (", pc2_var, "%)"),
+    y = paste0("PC1 (", pc1_var, "%)"),
+    color = "Data Source"
+  )
+
+
+
+
+# ONLY AMS samples from Ovilava 
+
+# Filter Modern, Roman, and Medieval (excluding Hungary)
+filtered_data <- subset(
+  pca_data,
+  Country != "Hungary" & Data_Source %in% c("Modern", "Roman", "Medieval")
+)
+
+# Filter Ovilava using only matched IDs
+ovilava_subset <- subset(
+  pca_data,
+  Data_Source == "Ovilava" & gsub("\\.TW$", "", ID) %in% matching_ids
+)
+
+# Combine all for plotting
+plot_data <- rbind(filtered_data, ovilava_subset)
+
+
+ggplot(plot_data, aes(x = PC2, y = PC1, color = Data_Source)) +
+  geom_point(alpha = 0.7, size = 3) +
+  geom_text_repel(
+    data = subset(plot_data, Data_Source == "Ovilava"),
+    aes(label = ID),
+    size = 3,
+    box.padding = 0.5,
+    point.padding = 0.3,
+    segment.size = 0.2,
+    max.overlaps = 100
+  ) +
+  scale_color_manual(values = c(
+    "Modern" = "gray",
+    "Roman" = "#440154FF",
+    "Medieval" = "#FDE725FF",
+    "Ovilava" = "orange"
+  )) +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    plot.title = element_text(size = 20),
+    axis.title = element_text(size = 15),
+    legend.text = element_text(size = 12),
+    legend.title = element_text(size = 15)
+  ) +
+  labs(
+    title = "PCA of Modern, Roman, Medieval, and Ovilava Samples (Excluding Hungary)",
+    x = paste0("PC2 (", pc2_var, "%)"),
+    y = paste0("PC1 (", pc1_var, "%)"),
+    color = "Data Source"
+  )
+
+
+
+
+
+## Plot based on Phase
+
+library(dplyr)
+library(ggplot2)
+library(ggrepel)
+
+# Load AMS data
+ams_data <- read.csv("OVILAVA_14C_data.csv")
+
+# Clean Ovilava IDs in pca_data
+pca_data$Clean_ID <- gsub("\\.TW$", "", pca_data$ID)
+
+# Match IDs
+matching_ids <- intersect(ams_data$Master_ID, pca_data$Clean_ID[pca_data$Data_Source == "Ovilava"])
+
+# Subset AMS data to only matched
+matched_ams <- ams_data[ams_data$Master_ID %in% matching_ids, ]
+
+# Subset and join Ovilava
+ovilava_subset <- pca_data %>%
+  filter(Data_Source == "Ovilava" & Clean_ID %in% matching_ids) %>%
+  left_join(matched_ams, by = c("Clean_ID" = "Master_ID"))
+
+# Add phase labels like "Phase 1", "Phase 2", etc.
+ovilava_subset$Phase_Label <- paste0("Phase ", ovilava_subset$X14C_Phase)
+
+# Subset Modern/Roman/Medieval (exclude Hungary)
+other_data <- pca_data %>%
+  filter(Data_Source %in% c("Modern", "Roman", "Medieval") & Country != "Hungary") %>%
+  mutate(Phase_Label = Data_Source)
+
+# Combine
+plot_data <- bind_rows(other_data, ovilava_subset)
+
+# Define colors
+color_vals <- c(
+  "Modern" = "gray",
+  "Roman" = "#440154FF",
+  "Medieval" = "#FDE725FF",
+  "Phase 0" = "#D55E00",
+  "Phase 1" = "#E69F00",
+  "Phase 2" = "#56B4E9",
+  "Phase 3" = "#009E73",
+  "Phase 4" = "#CC79A7",
+  "Phase 5" = "#0072B2",
+  "Phase 6" = "#999999"
+)
+
+# Plot
+ggplot(plot_data, aes(x = PC2, y = PC1, color = Phase_Label)) +
+  geom_point(alpha = 0.7, size = 3) +
+  geom_text_repel(
+    data = ovilava_subset,
+    aes(label = ID),
+    size = 3,
+    box.padding = 0.5,
+    point.padding = 0.3,
+    segment.size = 0.2,
+    max.overlaps = 100
+  ) +
+  scale_color_manual(values = color_vals) +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    plot.title = element_text(size = 20),
+    axis.title = element_text(size = 15),
+    legend.text = element_text(size = 12),
+    legend.title = element_text(size = 15)
+  ) +
+  labs(
+    title = "PCA of Modern, Roman, Medieval, and Ovilava Samples (Ovilava Colored by 14C Phase)",
+    x = paste0("PC2 (", pc2_var, "%)"),
+    y = paste0("PC1 (", pc1_var, "%)"),
+    color = "Group / Phase"
+  )
+
+
+
+## REMOVE modern
+# Subset Roman and Medieval only (exclude Hungary and Modern)
+
+
+
+
+
+
+library(dplyr)
+library(ggplot2)
+library(ggrepel)
+
+# Load AMS data
+ams_data <- read.csv("OVILAVA_14C_data.csv")
+
+# Clean Ovilava IDs in pca_data
+pca_data$Clean_ID <- gsub("\\.TW$", "", pca_data$ID)
+
+# Match IDs
+matching_ids <- intersect(ams_data$Master_ID, pca_data$Clean_ID[pca_data$Data_Source == "Ovilava"])
+
+# Subset AMS data to only matched
+matched_ams <- ams_data[ams_data$Master_ID %in% matching_ids, ]
+
+# Subset and join Ovilava
+ovilava_subset <- pca_data %>%
+  filter(Data_Source == "Ovilava" & Clean_ID %in% matching_ids) %>%
+  left_join(matched_ams, by = c("Clean_ID" = "Master_ID"))
+
+# Add phase labels like "Phase 1", "Phase 2", etc.
+ovilava_subset$Phase_Label <- paste0("Phase ", ovilava_subset$X14C_Phase)
+
+# Subset Modern/Roman/Medieval (exclude Hungary)
+other_data <- pca_data %>%
+  filter(Data_Source %in% c("Roman", "Medieval") & Country != "Hungary") %>%
+  mutate(Phase_Label = Data_Source)
+
+# Combine
+plot_data <- bind_rows(other_data, ovilava_subset)
+
+# Define colors
+color_vals <- c(
+  "Roman" = "#440154FF",
+  "Medieval" = "#FDE725FF",
+  "Phase 0" = "#D55E00",
+  "Phase 1" = "#E69F00",
+  "Phase 2" = "#56B4E9",
+  "Phase 3" = "#009E73",
+  "Phase 4" = "#CC79A7",
+  "Phase 5" = "#0072B2",
+  "Phase 6" = "#999999"
+)
+
+
+
+
+
+# Plot
+ggplot(plot_data, aes(x = PC2, y = PC1, color = Phase_Label)) +
+  geom_point(alpha = 0.7, size = 3) +
+  geom_text_repel(
+    data = ovilava_subset,
+    aes(label = ID),
+    size = 3,
+    box.padding = 0.5,
+    point.padding = 0.3,
+    segment.size = 0.2,
+    max.overlaps = 100
+  ) +
+  scale_color_manual(values = color_vals) +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    plot.title = element_text(size = 20),
+    axis.title = element_text(size = 15),
+    legend.text = element_text(size = 12),
+    legend.title = element_text(size = 15)
+  ) +
+  labs(
+    title = "PCA of Roman, Medieval, and Ovilava 14C Phase Samples (No Hungary)",
+    x = paste0("PC2 (", pc2_var, "%)"),
+    y = paste0("PC1 (", pc1_var, "%)"),
+    color = "Group / Phase"
+  )
+
+
+
+
+
+
+## Descriptive phase labels NEED TO FIX "a" IN LEGEND
+
+
+phase_lookup <- c(
+  "0" = "Julio-Claudian dynasty (27 BCE–68 CE)\nNeronian (54–68 CE)",
+  "1" = "Adoptive Emperors | Traianic (98–117 CE)",
+  "2" = "Adoptive Emperors | Antonine (138–192 CE)",
+  "3" = "Severan dynasty (193–235 CE)",
+  "4" = "Barracks Emperors (235–284 CE)",
+  "5" = "Tetrarchy (284–313 CE)",
+  "6" = "Early Middle Ages (500–1100 CE)"
+)
+
+ovilava_subset$Phase_Label <- phase_lookup[as.character(ovilava_subset$X14C_Phase)]
+
+color_vals <- c(
+  "Roman" = "#440154FF",
+  "Medieval" = "#FDE725FF",
+  "Julio-Claudian dynasty (27 BCE–68 CE)\nNeronian (54–68 CE)" = "#D55E00",
+  "Adoptive Emperors | Traianic (98–117 CE)" = "#E69F00",
+  "Adoptive Emperors | Antonine (138–192 CE)" = "#56B4E9",
+  "Severan dynasty (193–235 CE)" = "#009E73",
+  "Barracks Emperors (235–284 CE)" = "#CC79A7",
+  "Tetrarchy (284–313 CE)" = "#0072B2",
+  "Early Middle Ages (500–1100 CE)" = "#999999"
+)
+
+
+# Plot
+ggplot(plot_data, aes(x = PC2, y = PC1, color = Phase_Label)) +
+  geom_point(alpha = 0.7, size = 3) +
+  geom_text_repel(
+    data = ovilava_subset,
+    aes(x = PC2, y = PC1, label = ID, color = Phase_Label),
+    size = 3,
+    box.padding = 0.5,
+    point.padding = 0.3,
+    segment.size = 0.2,
+    max.overlaps = 100,
+    inherit.aes = FALSE
+  ) +
+  scale_color_manual(values = color_vals) +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    plot.title = element_text(size = 20),
+    axis.title = element_text(size = 15),
+    legend.text = element_text(size = 12),
+    legend.title = element_text(size = 15)
+  ) +
+  labs(
+    title = "PCA of Roman, Medieval, and Ovilava 14C Phase Samples (No Hungary)",
+    x = paste0("PC2 (", pc2_var, "%)"),
+    y = paste0("PC1 (", pc1_var, "%)"),
+    color = "Group / Phase"
+  )
