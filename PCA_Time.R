@@ -323,3 +323,34 @@ ggplot(combined_data, aes(x = PC2, y = PC1, color = Country)) +
 
 
 
+
+## AMS RADIOCARBON DATES
+# Load AMSfile
+ams_data <- read.table("OVILAVA_14C_data.csv", header = TRUE, sep = ",")
+
+# Find matching IDs between the ovilava and ams datasets
+# Read in your data
+
+# Extract the IDs from both datasets
+ams_ids <- ams_data$Master_ID
+ovilava_ids <- gsub("\\.TW$", "", ovilava$V1)  # Remove '.TW' suffix
+
+# Find intersection
+matching_ids <- intersect(ams_ids, ovilava_ids)
+
+# View results
+# print(matching_ids)
+# length(matching_ids)
+
+
+# missing_ids <- setdiff(ovilava_ids, ams_data$Master_ID)
+# length(missing_ids)
+# missing_ids
+# These missing IDs are Early Medieval that were not radiocarbon dated
+
+
+
+
+
+
+
