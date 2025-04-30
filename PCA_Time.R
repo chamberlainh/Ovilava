@@ -439,9 +439,13 @@ ggplot(plot_data, aes(x = PC2, y = PC1, color = Data_Source)) +
   )
 
 
+------------------------------------------------------------------------------------------------------------------------
 
+## ONLY AMS samples from Ovilava 
 
-# ONLY AMS samples from Ovilava 
+# Remove individual I15499.AG from Serbia who is skewing the PCA
+pca_data <- pca_data %>% filter(ID != "I15499.AG")
+
 
 # Filter Modern, Roman, and Medieval (excluding Hungary)
 filtered_data <- subset(
@@ -663,9 +667,9 @@ ggplot(plot_data, aes(x = PC2, y = PC1, color = Phase_Label)) +
 
 
 
-## Descriptive phase labels NEED TO FIX "a" IN LEGEND
+## Descriptive phase labels 
 
-
+# Define Phase Labels
 phase_lookup <- c(
   "0" = "Julio-Claudian dynasty (27 BCE–68 CE)\nNeronian (54–68 CE)",
   "1" = "Adoptive Emperors | Traianic (98–117 CE)",
@@ -676,35 +680,56 @@ phase_lookup <- c(
   "6" = "Early Middle Ages (500–1100 CE)"
 )
 
-ovilava_subset$Phase_Label <- phase_lookup[as.character(ovilava_subset$X14C_Phase)]
+phase_levels <- c(
+  "Julio-Claudian dynasty (27 BCE–68 CE)\nNeronian (54–68 CE)",  # Phase 0
+  "Adoptive Emperors | Traianic (98–117 CE)",                    # Phase 1
+  "Adoptive Emperors | Antonine (138–192 CE)",                   # Phase 2
+  "Severan dynasty (193–235 CE)",                                # Phase 3
+  "Barracks Emperors (235–284 CE)",                              # Phase 4
+  "Tetrarchy (284–313 CE)",                                      # Phase 5
+  "Early Middle Ages (500–1100 CE)",                             # Phase 6
+  "Roman",
+  "Medieval"
+)
 
+
+# Apply labels
+# Apply phase labels where possible
+# First keep Phase_Label as-is (Roman, Medieval already set)
+# Only update labels for actual Ovilava phases (i.e., non-NA X14C_Phase)
+plot_data$Phase_Label[!is.na(plot_data$X14C_Phase)] <-
+  phase_lookup[as.character(plot_data$X14C_Phase[!is.na(plot_data$X14C_Phase)])]
+
+plot_data$Phase_Label <- factor(plot_data$Phase_Label, levels = phase_levels)
+
+
+# Colors
 color_vals <- c(
-  "Roman" = "#440154FF",
-  "Medieval" = "#FDE725FF",
   "Julio-Claudian dynasty (27 BCE–68 CE)\nNeronian (54–68 CE)" = "#D55E00",
   "Adoptive Emperors | Traianic (98–117 CE)" = "#E69F00",
   "Adoptive Emperors | Antonine (138–192 CE)" = "#56B4E9",
   "Severan dynasty (193–235 CE)" = "#009E73",
   "Barracks Emperors (235–284 CE)" = "#CC79A7",
   "Tetrarchy (284–313 CE)" = "#0072B2",
-  "Early Middle Ages (500–1100 CE)" = "#999999"
+  "Early Middle Ages (500–1100 CE)" = "#440154FF",
+  "Roman" = "#999999",
+  "Medieval" = "#FDE725FF"
 )
-
 
 # Plot
 ggplot(plot_data, aes(x = PC2, y = PC1, color = Phase_Label)) +
   geom_point(alpha = 0.7, size = 3) +
   geom_text_repel(
     data = ovilava_subset,
-    aes(x = PC2, y = PC1, label = ID, color = Phase_Label),
+    aes(x = PC2, y = PC1, label = ID),
     size = 3,
     box.padding = 0.5,
     point.padding = 0.3,
     segment.size = 0.2,
     max.overlaps = 100,
-    inherit.aes = FALSE
+    show.legend = FALSE
   ) +
-  scale_color_manual(values = color_vals) +
+  scale_color_manual(values = color_vals, drop = FALSE) +
   theme_minimal() +
   theme(
     panel.grid = element_blank(),
@@ -719,3 +744,141 @@ ggplot(plot_data, aes(x = PC2, y = PC1, color = Phase_Label)) +
     y = paste0("PC1 (", pc1_var, "%)"),
     color = "Group / Phase"
   )
+
+
+
+
+----------------------------------------------------------------------------------------------------
+## Biological Sex
+
+# Read in .fam file, in 5th column, 1=male, 2=female, 0=unknown
+
+
+fam <- read.table("MergedOvilavaTime30k_trim.fam", header = FALSE)
+colnames(fam) <- c("FID", "IID", "Father", "Mother", "Sex", "Phenotype")
+
+# Merge sex information into plot_data
+plot_data <- left_join(plot_data, fam %>% select(IID, Sex), by = c("ID" = "IID"))
+
+
+# Create Sex_Label based on Sex column
+plot_data$Sex_Label <- ifelse(plot_data$Sex.x == 1, "Male", 
+                              ifelse(plot_data$Sex.x == 2, "Female", "Unknown"))
+
+# Get counts for gender
+head(plot_data)
+table(plot_data$Sex_Label[plot_data$Data_Source == "Ovilava"])
+
+library(dplyr)
+
+plot_data %>%
+  group_by(Phase_Label, Sex_Label) %>%
+  summarise(Count = n()) %>%
+  arrange(Phase_Label, Sex_Label)
+
+plot_data %>%
+  count(Phase_Label)
+
+
+
+# PCA Plot with shapes based on biological sex
+ggplot(plot_data, aes(x = PC2, y = PC1, color = Phase_Label, shape = Sex_Label)) +
+  geom_point(alpha = 0.7, size = 3) +
+  geom_text_repel(
+    data = plot_data,
+    aes(x = PC2, y = PC1, label = ID),
+    size = 3,
+    box.padding = 0.5,
+    point.padding = 0.3,
+    segment.size = 0.2,
+    max.overlaps = 100,
+    inherit.aes = TRUE,  # So the position is inherited
+    show.legend = FALSE  # Prevent this layer from appearing in the legend
+  ) +
+  scale_color_manual(values = color_vals) +
+  scale_shape_manual(values = c("Male" = 0, "Female" = 5, "Unknown" = 4)) +  # Shape mapping for Male, Female, and Unknown
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    plot.title = element_text(size = 20),
+    axis.title = element_text(size = 15),
+    legend.text = element_text(size = 12),
+    legend.title = element_text(size = 15)
+  ) +
+  labs(
+    title = "PCA of Roman, Medieval, and Ovilava 14C Phase Samples (No Hungary)",
+    x = paste0("PC2 (", pc2_var, "%)"),
+    y = paste0("PC1 (", pc1_var, "%)"),
+    color = "Group / Phase",
+    shape = "Biological Sex"  # Legend label for biological sex
+  )
+
+
+# PCA Plot with shapes based on biological sex NO LABELS
+ggplot(plot_data, aes(x = PC2, y = PC1, color = Phase_Label, shape = Sex_Label)) +
+  geom_point(alpha = 0.7, size = 3) +
+  scale_color_manual(values = color_vals) +
+  scale_shape_manual(values = c("Male" = 15, "Female" = 17, "Unknown" = 4)) +  # Shape mapping for Male, Female, and Unknown
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    plot.title = element_text(size = 20),
+    axis.title = element_text(size = 15),
+    legend.text = element_text(size = 12),
+    legend.title = element_text(size = 15)
+  ) +
+  labs(
+    title = "PCA of Roman, Medieval, and Ovilava 14C Phase Samples (No Hungary)",
+    x = paste0("PC2 (", pc2_var, "%)"),
+    y = paste0("PC1 (", pc1_var, "%)"),
+    color = "Group / Phase",
+    shape = "Biological Sex"  # Legend label for biological sex
+  )
+
+
+
+
+
+# PCA Plot with shapes based on biological sex and labels from ovilava_subset
+ggplot(plot_data, aes(x = PC2, y = PC1, color = Phase_Label, shape = Sex_Label)) +
+  geom_point(alpha = 0.7, size = 3) +
+  geom_text_repel(
+    data = ovilava_subset,
+    aes(x = PC2, y = PC1, label = Clean_ID),  # Use Clean_ID or ID
+    size = 3,
+    box.padding = 0.5,
+    point.padding = 0.3,
+    segment.size = 0.2,
+    max.overlaps = 100,
+    inherit.aes = FALSE,  # Prevents the error by not inheriting Sex_Label
+    show.legend = FALSE
+  ) +
+  scale_color_manual(values = color_vals) +
+  scale_shape_manual(values = c("Male" = 15, "Female" = 17, "Unknown" = 4)) +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    plot.title = element_text(size = 20),
+    axis.title = element_text(size = 15),
+    legend.text = element_text(size = 12),
+    legend.title = element_text(size = 15)
+  ) +
+  labs(
+    title = "PCA of Roman, Medieval, and Ovilava 14C Phase Samples by Gender (No Hungary)",
+    x = paste0("PC2 (", pc2_var, "%)"),
+    y = paste0("PC1 (", pc1_var, "%)"),
+    color = "Group / Phase",
+    shape = "Biological Sex"
+  )
+
+
+library(dplyr)
+ovilava_subset %>%
+  count(Sex_Label)
+table(ovilava_subset$Sex_Label)
+
+
+
+--------------------------------------------------------------------------------------------------------------------------
+  ## By Country and Phase
+
