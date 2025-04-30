@@ -880,5 +880,50 @@ table(ovilava_subset$Sex_Label)
 
 
 --------------------------------------------------------------------------------------------------------------------------
-  ## By Country and Phase
+
+## By Country and Phase DOESNT WORK YET
+
+  # Update Ovilava phase labels using lookup
+  plot_data$Phase_Label[!is.na(plot_data$X14C_Phase)] <-
+  phase_lookup[as.character(plot_data$X14C_Phase[!is.na(plot_data$X14C_Phase)])]
+
+# Convert to factor with desired order
+plot_data$Phase_Label <- factor(plot_data$Phase_Label, levels = phase_levels)
+
+
+# Subset
+roman_medieval_data_no_hungary <- plot_data %>%
+  filter(Data_Source %in% c("Roman", "Medieval"), Country != "Hungary")
+
+ams_data <- plot_data %>%
+  filter(Data_Source == "Ovilava")
+
+# Combine
+combined_data <- rbind(roman_medieval_data_no_hungary, ams_data)
+
+combined_data$Plot_Group <- combined_data$Phase_Label
+
+
+ggplot(combined_data, aes(x = PC2, y = PC1, color = Country)) +
+  geom_point(alpha = 0.7, size = 3) +
+  scale_color_manual(values = color_vals, drop = FALSE) +  # Keep all phase levels
+  geom_text(
+    data = subset(combined_data, Data_Source == "Ovilava"),
+    aes(label = ID),
+    vjust = -1, hjust = 0.5, size = 3, show.legend = FALSE
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    plot.title = element_text(size = 20),
+    axis.title = element_text(size = 15),
+    legend.text = element_text(size = 12),
+    legend.title = element_text(size = 15)
+  ) +
+  labs(
+    title = "PCA of Roman/Medieval Populations by Country & AMS Samples by Phase",
+    x = paste0("PC2 (", pc2_var, "%)"),
+    y = paste0("PC1 (", pc1_var, "%)"),
+    color = "Phase"
+  )
 
