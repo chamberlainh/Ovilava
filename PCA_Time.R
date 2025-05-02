@@ -927,3 +927,115 @@ ggplot(combined_data, aes(x = PC2, y = PC1, color = Country)) +
     color = "Phase"
   )
 
+
+
+
+
+-------------------------------------------------------------------------------
+# Phase and Country
+  
+
+
+# Make sure Phase_Label is a factor with defined levels
+plot_data$Phase_Label[!is.na(plot_data$X14C_Phase)] <-
+phase_lookup[as.character(plot_data$X14C_Phase[!is.na(plot_data$X14C_Phase)])]
+
+plot_data$Phase_Label <- factor(plot_data$Phase_Label, levels = phase_levels)
+
+# Remove individual I15499.AG from Serbia who is skewing the PCA
+plot_data <- plot_data %>% filter(ID != "I15499.AG")
+
+# Subset Roman + Medieval (excluding Hungary) plus Ovilava
+combined_data <- rbind(
+  subset(plot_data, Data_Source %in% c("Roman", "Medieval") & Country != "Hungary"),
+  subset(plot_data, Data_Source == "Ovilava")
+)
+
+# Plot with color = Country, shape = Phase
+# Plot with color = Country, shape = Phase
+ggplot(combined_data, aes(x = PC2, y = PC1, color = Country, shape = Phase_Label)) +
+  geom_point(alpha = 0.8, size = 3) +
+  geom_text_repel(
+    data = subset(combined_data, Data_Source == "Ovilava"),
+    aes(label = ID),
+    size = 3,
+    box.padding = 0.5,
+    point.padding = 0.3,
+    segment.size = 0.2,
+    max.overlaps = 100,
+    show.legend = FALSE
+  ) +
+  scale_color_viridis(discrete = TRUE) +
+  scale_shape_manual(values = c(
+    "Julio-Claudian dynasty (27 BCE–68 CE)\nNeronian (54–68 CE)" = 0,  # square
+    "Adoptive Emperors | Traianic (98–117 CE)" = 1,                   # circle
+    "Adoptive Emperors | Antonine (138–192 CE)" = 2,                  # triangle
+    "Severan dynasty (193–235 CE)" = 3,                               # plus
+    "Barracks Emperors (235–284 CE)" = 4,                             # cross
+    "Tetrarchy (284–313 CE)" = 5,                                     # diamond
+    "Early Middle Ages (500–1100 CE)" = 6,                            # inverted triangle
+    "Roman" = 16,                                                     # filled circle
+    "Medieval" = 16                                                   # filled circle w/ border
+  ), drop = FALSE) +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    plot.title = element_text(size = 20),
+    axis.title = element_text(size = 15),
+    legend.text = element_text(size = 12),
+    legend.title = element_text(size = 15)
+  ) +
+  labs(
+    title = "PCA of Roman, Medieval, and Ovilava Populations by Country and Phase",
+    x = paste0("PC2 (", pc2_var, "%)"),
+    y = paste0("PC1 (", pc1_var, "%)"),
+    color = "Country",
+    shape = "Phase"
+  )
+
+
+# Change country transparency
+# Set a fixed alpha level
+combined_data$Alpha_Level <- 0.5
+
+# Plot
+ggplot(combined_data, aes(x = PC2, y = PC1, color = Country, shape = Phase_Label, alpha = Alpha_Level)) +
+  geom_point(size = 3) +
+  geom_text_repel(
+    data = subset(combined_data, Data_Source == "Ovilava"),
+    aes(label = ID),
+    size = 3,
+    box.padding = 0.5,
+    point.padding = 0.3,
+    segment.size = 0.2,
+    max.overlaps = 100,
+    show.legend = FALSE
+  ) +
+  scale_color_viridis(discrete = TRUE) +
+  scale_shape_manual(values = c(
+    "Julio-Claudian dynasty (27 BCE–68 CE)\nNeronian (54–68 CE)" = 0,
+    "Adoptive Emperors | Traianic (98–117 CE)" = 1,
+    "Adoptive Emperors | Antonine (138–192 CE)" = 2,
+    "Severan dynasty (193–235 CE)" = 3,
+    "Barracks Emperors (235–284 CE)" = 4,
+    "Tetrarchy (284–313 CE)" = 5,
+    "Early Middle Ages (500–1100 CE)" = 6,
+    "Roman" = 16,
+    "Medieval" = 16
+  ), drop = FALSE) +
+  scale_alpha(range = c(0.5, 0.5), guide = "none") +  # Fixed transparency, no legend
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    plot.title = element_text(size = 20),
+    axis.title = element_text(size = 15),
+    legend.text = element_text(size = 12),
+    legend.title = element_text(size = 15)
+  ) +
+  labs(
+    title = "PCA of Roman, Medieval, and Ovilava Populations by Country and Phase (No Hungary)",
+    x = paste0("PC2 (", pc2_var, "%)"),
+    y = paste0("PC1 (", pc1_var, "%)"),
+    color = "Country",
+    shape = "Phase"
+  )
