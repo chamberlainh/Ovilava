@@ -35,6 +35,28 @@ pca_data$Data_Source <- ifelse(pca_data$ID %in% modern$V1 &
 table(pca_data$Data_Source)
 
 
+# Add Site column with NA values
+pca_data$Site <- NA
+
+
+# Assign Site based on Data_Source
+pca_data$Site <- ifelse(pca_data$Data_Source == "Modern", "Modern",
+                        ifelse(pca_data$Data_Source == "Roman", "Roman",
+                               ifelse(pca_data$Data_Source == "Medieval", "Medieval",
+                                      ifelse(pca_data$Data_Source == "Ovilava", "Ovilava", 
+                                             pca_data$Site))))  # Retain existing values for other cases
+
+
+# Define all eigenvalues from the MergedOvilava30k_trim..evec header
+eigvals <- c(6.876, 3.297, 2.512, 2.327, 2.087, 2.036, 1.996, 1.983, 1.969, 1.954)
+
+# Calculate percentage of variance explained
+percent_var <- (eigvals / sum(eigvals)) * 100
+
+# Extract percentages for PC1 and PC2
+pc1_var <- round(percent_var[1], 2)
+pc2_var <- round(percent_var[2], 2)
+
 # Modern and Ovilava only
 # Filter only Ovilava and Modern samples
 pca_subset <- subset(pca_data, Data_Source %in% c("Modern", "Ovilava"))
@@ -67,27 +89,7 @@ ggplot() +
 
 
 
-# Add Site column with NA values
-pca_data$Site <- NA
 
-
-# Assign Site based on Data_Source
-pca_data$Site <- ifelse(pca_data$Data_Source == "Modern", "Modern",
-                        ifelse(pca_data$Data_Source == "Roman", "Roman",
-                               ifelse(pca_data$Data_Source == "Medieval", "Medieval",
-                                      ifelse(pca_data$Data_Source == "Ovilava", "Ovilava", 
-                                             pca_data$Site))))  # Retain existing values for other cases
-
-
-# Define all eigenvalues from the MergedOvilava30k_trim..evec header
-eigvals <- c(6.876, 3.297, 2.512, 2.327, 2.087, 2.036, 1.996, 1.983, 1.969, 1.954)
-
-# Calculate percentage of variance explained
-percent_var <- (eigvals / sum(eigvals)) * 100
-
-# Extract percentages for PC1 and PC2
-pc1_var <- round(percent_var[1], 2)
-pc2_var <- round(percent_var[2], 2)
 
 ## Color Assignments
 
