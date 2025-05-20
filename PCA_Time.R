@@ -35,6 +35,37 @@ pca_data$Data_Source <- ifelse(pca_data$ID %in% modern$V1 &
 table(pca_data$Data_Source)
 
 
+# Modern and Ovilava only
+# Filter only Ovilava and Modern samples
+pca_subset <- subset(pca_data, Data_Source %in% c("Modern", "Ovilava"))
+
+# Plot only Modern and Ovilava samples
+ggplot() +
+  # Plot Modern as unfilled gray circles with transparency 0.1
+  geom_point(data = subset(pca_subset, Data_Source == "Modern"), 
+             aes(x = PC2, y = PC1, color = Site), alpha = 0.1, size = 3) +
+  # Plot Ovilava with full opacity
+  geom_point(data = subset(pca_subset, Data_Source == "Ovilava"), 
+             aes(x = PC2, y = PC1, color = Site), alpha = 1, size = 3) +
+  scale_color_manual(
+    values = setNames(pca_subset$Colour, pca_subset$Site),
+    name = "Site"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    plot.title = element_text(size = 20),
+    axis.title = element_text(size = 15),
+    legend.text = element_text(size = 15),
+    legend.title = element_text(size = 15)
+  ) +
+  labs(
+    title = "PCA of Ovilava and Modern Populations",
+    x = paste0("PC2 (", pc2_var, "%)"),
+    y = paste0("PC1 (", pc1_var, "%)")
+  )
+
+
 
 # Add Site column with NA values
 pca_data$Site <- NA
@@ -119,6 +150,169 @@ ggplot() +
     x = paste0("PC2 (", pc2_var, "%)"),
     y = paste0("PC1 (", pc1_var, "%)")
   )
+
+
+
+# PERFECT FOR MODERN
+# Modern and Ovilava by Modern Country
+# Make a copy of pca_data
+pca_data_copy <- pca_data
+
+# Extract country from the Population column by taking the part before the first "_"
+pca_data_copy$Country <- sub("_.*", "", pca_data_copy$Population)
+
+# Remove rows where Country is numeric (if any)
+pca_data_copy <- pca_data_copy[!grepl("^[0-9]+$", pca_data_copy$Country), ]
+
+# Filter data for modern populations
+modern_data <- subset(pca_data_copy, Data_Source %in% c("Modern"))
+
+# Convert Country to a factor to preserve ordering
+modern_data$Country <- factor(modern_data$Country)
+
+# Check the unique countries in the Country column
+unique(modern_data$Country)
+
+
+# Plot PCA with Country as color for Modern populations
+ggplot(modern_data, aes(x = PC1, y = PC2, color = Country)) +
+  geom_point(alpha = 0.7, size = 3) +  # Adjust transparency and point size
+  scale_color_viridis(discrete = TRUE) +  # Use viridis colors for better distinction
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),  # Remove grid
+    plot.title = element_text(size = 20),  # Increase title size
+    axis.title = element_text(size = 15),  # Increase axis title size
+    legend.text = element_text(size = 12),
+    legend.title = element_text(size = 15) # Increase legend title size
+  ) +
+  labs(
+    title = "PCA of Modern Populations by Country",
+    x = paste0("PC2 (", pc2_var, "%)"),
+    y = paste0("PC1 (", pc1_var, "%)"),
+    color = "Country"
+  )
+
+
+# ADD OVILAVA
+library(dplyr)
+library(ggrepel)
+
+
+# Prepare ovilava_subset: ensure same columns
+ovilava_plot_data <- ovilava_subset %>%
+  mutate(Country = "Ovilava") %>%
+  select(ID, PC1, PC2, Population, Data_Source, Country)
+
+# Combine the two datasets
+combined_data <- bind_rows(modern_data, ovilava_plot_data)
+
+# Assign colors: viridis for modern + orange for Ovilava
+country_colors <- setNames(viridis(length(modern_countries), option = "D"), modern_countries)
+country_colors["Ovilava"] <- "#F89441"
+
+# Compute centroids for each Country
+country_centroids <- combined_data %>%
+  group_by(Country) %>%
+  summarize(
+    PC1 = mean(PC1, na.rm = TRUE),
+    PC2 = mean(PC2, na.rm = TRUE)
+  )
+
+# Plot PCA points, add Ovilava labels with IDs
+ggplot(combined_data, aes(x = PC1, y = PC2, color = Country)) +
+  geom_point(alpha = 0.7, size = 3) +
+  geom_text_repel(
+    data = country_centroids,
+    aes(x = PC1, y = PC2, label = Country),
+    size = 6,
+    fontface = "bold",
+    color = "black",
+    show.legend = FALSE
+  ) +
+  #ONLY OVILAVA LABELS
+  #geom_text_repel(
+    #data = filter(combined_data, Country == "Ovilava"), 
+    #aes(label = ID),
+    #color = "#F89441",
+    #size = 3.5,
+    #fontface = "italic"
+  #) +
+  scale_color_manual(values = country_colors) +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    plot.title = element_text(size = 20),
+    axis.title = element_text(size = 15),
+    legend.text = element_text(size = 12),
+    legend.title = element_text(size = 15)
+  ) +
+  labs(
+    title = "PCA of Modern Populations by Country with Ovilava Samples",
+    x = paste0("PC1 (", pc1_var, "%)"),
+    y = paste0("PC2 (", pc2_var, "%)"),
+    color = "Country"
+  )
+
+
+
+# Modern, Ovilava, Labels for All
+library(ggplot2)
+library(ggrepel)
+library(dplyr)
+
+# 1. Calculate country centroids for labels
+country_centroids <- combined_data %>%
+  group_by(Country) %>%
+  summarize(
+    PC1 = mean(PC1, na.rm = TRUE),
+    PC2 = mean(PC2, na.rm = TRUE)
+  )
+
+ggplot(combined_data, aes(x = PC1, y = PC2, color = Country)) +
+  geom_point(alpha = 0.7, size = 3) +
+  
+  # 2. Add Ovilava sample ID labels at each Ovilava point
+  geom_text_repel(
+    data = filter(combined_data, Country == "Ovilava"),
+    aes(label = ID),
+    color = "#F89441",
+    size = 3.5,
+    fontface = "italic"
+  ) +
+  
+  # 3. Add country labels at centroid positions
+  geom_text_repel(
+    data = country_centroids,
+    aes(x = PC1, y = PC2, label = Country),
+    size = 6,
+    fontface = "bold",
+    color = "black",
+    show.legend = FALSE
+  ) +
+  
+  scale_color_manual(values = country_colors) +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    plot.title = element_text(size = 20),
+    axis.title = element_text(size = 15),
+    legend.text = element_text(size = 12),
+    legend.title = element_text(size = 15)
+  ) +
+  labs(
+    title = "PCA of Modern Populations by Country with Ovilava Samples",
+    x = paste0("PC1 (", pc1_var, "%)"),
+    y = paste0("PC2 (", pc2_var, "%)"),
+    color = "Country"
+  )
+
+
+
+
+
+
+
 
 
 
@@ -498,7 +692,7 @@ ggplot(plot_data, aes(x = PC2, y = PC1, color = Data_Source)) +
 
 
 
-
+# THIS IS WHERE I ADDED THE NON-AMS ROMAN FROM OVILAVA
 ## Plot based on Phase
 
 library(dplyr)
@@ -544,7 +738,8 @@ color_vals <- c(
   "Phase 3" = "#009E73",
   "Phase 4" = "#CC79A7",
   "Phase 5" = "#0072B2",
-  "Phase 6" = "#999999"
+  "Phase 6" = "#999999",
+  "Phase 7" = "black"
 )
 
 # Plot
@@ -619,6 +814,7 @@ plot_data <- bind_rows(other_data, ovilava_subset)
 
 # Define colors
 color_vals <- c(
+  "Modern" = "gray",
   "Roman" = "#440154FF",
   "Medieval" = "#FDE725FF",
   "Phase 0" = "#D55E00",
@@ -627,7 +823,8 @@ color_vals <- c(
   "Phase 3" = "#009E73",
   "Phase 4" = "#CC79A7",
   "Phase 5" = "#0072B2",
-  "Phase 6" = "#999999"
+  "Phase 6" = "#999999",
+  "Phase 7" = "black"
 )
 
 
@@ -677,7 +874,8 @@ phase_lookup <- c(
   "3" = "Severan dynasty (193–235 CE)",
   "4" = "Barracks Emperors (235–284 CE)",
   "5" = "Tetrarchy (284–313 CE)",
-  "6" = "Early Middle Ages (500–1100 CE)"
+  "6" = "Early Middle Ages (500–1100 CE)",
+  "7" = "Roman Context-Dated"
 )
 
 phase_levels <- c(
@@ -688,6 +886,7 @@ phase_levels <- c(
   "Barracks Emperors (235–284 CE)",                              # Phase 4
   "Tetrarchy (284–313 CE)",                                      # Phase 5
   "Early Middle Ages (500–1100 CE)",                             # Phase 6
+  "Roman Context-Dated",                                         # Phase 7
   "Roman",
   "Medieval"
 )
@@ -712,6 +911,7 @@ color_vals <- c(
   "Barracks Emperors (235–284 CE)" = "#CC79A7",
   "Tetrarchy (284–313 CE)" = "#0072B2",
   "Early Middle Ages (500–1100 CE)" = "#440154FF",
+  "Roman Context-Dated" = "black",
   "Roman" = "#999999",
   "Medieval" = "#FDE725FF"
 )
@@ -838,7 +1038,6 @@ ggplot(plot_data, aes(x = PC2, y = PC1, color = Phase_Label, shape = Sex_Label))
 
 
 
-
 # PCA Plot with shapes based on biological sex and labels from ovilava_subset
 ggplot(plot_data, aes(x = PC2, y = PC1, color = Phase_Label, shape = Sex_Label)) +
   geom_point(alpha = 0.7, size = 3) +
@@ -864,7 +1063,7 @@ ggplot(plot_data, aes(x = PC2, y = PC1, color = Phase_Label, shape = Sex_Label))
     legend.title = element_text(size = 15)
   ) +
   labs(
-    title = "PCA of Roman, Medieval, and Ovilava 14C Phase Samples by Gender (No Hungary)",
+    title = "PCA of Roman, Medieval, and Ovilava 14C Phase Samples by Sex (No Hungary)",
     x = paste0("PC2 (", pc2_var, "%)"),
     y = paste0("PC1 (", pc1_var, "%)"),
     color = "Group / Phase",
@@ -1020,6 +1219,7 @@ ggplot(combined_data, aes(x = PC2, y = PC1, color = Country, shape = Phase_Label
     "Barracks Emperors (235–284 CE)" = 4,
     "Tetrarchy (284–313 CE)" = 5,
     "Early Middle Ages (500–1100 CE)" = 6,
+    "Roman Context-Dated" = 7,
     "Roman" = 16,
     "Medieval" = 16
   ), drop = FALSE) +
@@ -1039,3 +1239,4 @@ ggplot(combined_data, aes(x = PC2, y = PC1, color = Country, shape = Phase_Label
     color = "Country",
     shape = "Phase"
   )
+
