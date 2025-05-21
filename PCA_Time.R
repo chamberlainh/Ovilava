@@ -57,6 +57,28 @@ percent_var <- (eigvals / sum(eigvals)) * 100
 pc1_var <- round(percent_var[1], 2)
 pc2_var <- round(percent_var[2], 2)
 
+
+
+
+
+## Color Assignments
+
+# Get unique Site names
+site_names <- unique(pca_data$Site)
+
+# Generate viridis colors for all sites
+site_colors <- viridis(length(site_names), option = "D")
+
+# Create a named vector for site-to-color mapping
+site_color_map <- setNames(site_colors, site_names)
+
+# Assign colors based on site
+pca_data$Colour <- ifelse(pca_data$Data_Source == "Modern", "grey",  # Modern as gray
+                          ifelse(pca_data$Data_Source == "Roman", site_color_map["Roman"],  # Roman color
+                                 ifelse(pca_data$Data_Source == "Medieval", site_color_map["Medieval"],  # Medieval color
+                                        ifelse(pca_data$Data_Source == "Ovilava", "#F89441", NA))))  # Ovilava color
+
+   
 # Modern and Ovilava only
 # Filter only Ovilava and Modern samples
 pca_subset <- subset(pca_data, Data_Source %in% c("Modern", "Ovilava"))
@@ -88,28 +110,6 @@ ggplot() +
   )
 
 
-
-
-
-## Color Assignments
-
-# Get unique Site names
-site_names <- unique(pca_data$Site)
-
-# Generate viridis colors for all sites
-site_colors <- viridis(length(site_names), option = "D")
-
-# Create a named vector for site-to-color mapping
-site_color_map <- setNames(site_colors, site_names)
-
-# Assign colors based on site
-pca_data$Colour <- ifelse(pca_data$Data_Source == "Modern", "grey",  # Modern as gray
-                          ifelse(pca_data$Data_Source == "Roman", site_color_map["Roman"],  # Roman color
-                                 ifelse(pca_data$Data_Source == "Medieval", site_color_map["Medieval"],  # Medieval color
-                                        ifelse(pca_data$Data_Source == "Ovilava", "#F89441", NA))))  # Ovilava color
-
-   
-                                        
                                         
                                         
                                         
