@@ -20,27 +20,50 @@ sampleList = unique(testList)
 amodels_table = data.frame(matrix(nrow = 0,ncol = 5))
 colnames(amodels_table)=c("A","B","Right","P-value_R0","SNPs")
 
+
 counter = 1
 for(qpwavefile in mylist1) {
   print(qpwavefile)
-  qpwaveload = read.table(file = qpwavefile,fill = T, sep="\n",stringsAsFactors = F)
-  lineL = which(grepl(pattern = "left pops:",x = qpwaveload$V1) == TRUE)+1 ##First left population
-  lineR = which(grepl(pattern = "right pops:",x = qpwaveload$V1) == TRUE)+1 ##First right individual
-  left_pops = qpwaveload[seq(lineL,lineL+1),]
   
-  lineRlast = (which(grepl(pattern = " 0 ",x = qpwaveload$V1) == TRUE)-1)[1]
-  right_pops = qpwaveload[seq(lineR,lineRlast),]
+  qpwaveload = read.table(file = qpwavefile, fill = TRUE, sep = "\n", stringsAsFactors = FALSE)
   
-  line0 = which(grepl(pattern = "f4rank: 0",x = qpwaveload$V1) == TRUE)
-  pvalue = strsplit(x = as.character(qpwaveload[line0,]),split = " ")[[1]][strsplit(x = as.character(qpwaveload[line0,]),split = " ")[[1]] != ""][8]
+  # Get left populations
+  lineL = which(grepl(pattern = "left pops:", x = qpwaveload$V1)) + 1
+  left_pops = qpwaveload[seq(lineL, lineL + 1), , drop = FALSE]
   
-  linesnp = which(grepl(pattern = "numsnps used:",x = qpwaveload$V1) == TRUE)
-  numspns = strsplit(x = as.character(qpwaveload[linesnp,]),split = " ")[[1]][strsplit(x = as.character(qpwaveload[linesnp,]),split = " ")[[1]] != ""][3]
+  # Get right populations
+  lineR = which(grepl(pattern = "right pops:", x = qpwaveload$V1)) + 1
+  lineRlast = (which(grepl(pattern = " 0 ", x = qpwaveload$V1)) - 1)[1]
+  right_pops = qpwaveload[seq(lineR, lineRlast), , drop = FALSE]
   
-  line=paste0(c(left_pops,paste0(right_pops,collapse = ","),pvalue,numspns))
-  amodels_table[counter,] = line
+  # Extract p-value for rank 0
+  line0 = which(grepl(pattern = "f4rank: 0", x = qpwaveload$V1))
+  pvalue_parts = strsplit(x = as.character(qpwaveload[line0, ]), split = " ")[[1]]
+  pvalue = pvalue_parts[pvalue_parts != ""][8]
+  
+  # Extract number of SNPs
+  linesnp = which(grepl(pattern = "numsnps used:", x = qpwaveload$V1))
+  snp_parts = strsplit(x = as.character(qpwaveload[linesnp, ]), split = " ")[[1]]
+  numspns = snp_parts[snp_parts != ""][3]
+  
+  # Add to table
+  amodels_table[counter, ] <- c(
+    strsplit(trimws(left_pops[1, 1]), "\\s+")[[1]][1],
+    strsplit(trimws(left_pops[2, 1]), "\\s+")[[1]][1],
+    paste0(trimws(right_pops[, 1]), collapse = ","),
+    as.character(pvalue),
+    as.character(numspns)
+  )
+  
   counter = counter + 1
 }
+
+
+
+
+
+
+
 
 ## Sorting by column index [1] then [2]
 amodels_table = amodels_table[order( amodels_table[,1], amodels_table[,2] ),]
@@ -49,12 +72,19 @@ amodels_table$`P-value_R0` = as.numeric(amodels_table$`P-value_R0`)
 amodels_table[which(amodels_table$`P-value_R0` < 1e-299 & amodels_table$`P-value_R0` > 0),4] = 0
 write.table(x = amodels_table,file = "table_batch_qpWave",sep = "\t",quote = F,row.names = F,col.names = T)
 
+
+
+system("head table_batch_qpWave")
+lines <- readLines("table_batch_qpWave")
+sapply(strsplit(lines, "\t"), length)
+
 # Load "table_batch_qpWave" to create a heatmap
 rm(list = ls())
 
 
 ##### here starts the manual test
-qpWave_batch_load = read.table(file = "table_batch_qpWave", fill= T, sep="",stringsAsFactors = F,header = T)
+qpWave_batch_load = read.table(file = "table_batch_qpWave", fill = TRUE, sep = "\t", stringsAsFactors = FALSE, header = TRUE)
+#qpWave_batch_load = read.table(file = "table_batch_qpWave", fill= T, sep="",stringsAsFactors = F,header = T)
 qpWave_batch_load[,6] = paste0(qpWave_batch_load$A,"---",qpWave_batch_load$B)
 qpWave_batch_load[,7] = paste0(qpWave_batch_load$B,"---",qpWave_batch_load$A)
 
@@ -93,15 +123,33 @@ for(colu in seq(1:length(combis[1,]))) {
   qpWave_heat[popsHere2,popsHere1] = pvalue
   it=it+1
 }
+
+
 ## Output the p-value matrix if needed to be ordered or edited outside of R
-write.csv(x = qpWave_heat,file = "TESTtable_qpWave_heatmap.csv",quote = F)
+write.csv(x = qpWave_heat,file = "UPDATEtable_qpWave_heatmap.csv",quote = F)
 
 ## reorder ####
 ## Output the p-value matrix if needed to be ordered or edited outside of R
-write.csv(x = qpWave_heat,file = "TESTtable_qpWave_heatmap.csv",quote = F)
+write.csv(x = qpWave_heat,file = "UPDATEtable_qpWave_heatmap.csv",quote = F)
+
+
 
 # Define the desired order for the test samples to be put at the end
-desired_order <- c("Sarengrad_G41", "Sarengrad_G31", "SGK34","Sarengrad_G18", "Sarengrad_G80","Sarengrad_G33",  "SGK39",  "Sarengrad_G84",  "SGK68","SGK12","SGK29","SGK28",  "SGK50", "Sarengrad_G21", "Sarengrad_G17",   "Sarengrad_G71", "Sarengrad_G73", "Sarengrad_G75","Sarengrad_G55","Sarengrad_G14","Sarengrad_G37", "Sarengrad_G38")  # Add other test samples as needed
+# desired_order <- c("Sarengrad_G41", "Sarengrad_G31", "SGK34","Sarengrad_G18", "Sarengrad_G80","Sarengrad_G33",  "SGK39",  "Sarengrad_G84",  "SGK68","SGK12","SGK29","SGK28",  "SGK50", "Sarengrad_G21", "Sarengrad_G17",   "Sarengrad_G71", "Sarengrad_G73", "Sarengrad_G75","Sarengrad_G55","Sarengrad_G14","Sarengrad_G37", "Sarengrad_G38")  # Add other test samples as needed
+desired_order <- c(
+  "I35357", "I35358", "I35359", "I35385", "I35386", "I35387", "I35388", "I35389",
+  "I35391", "I35392", "I35393", "I35394", "I35395", "I35396", "I35401", "I35402",
+  "I35403", "I35404", "I35405", "I35406", "I35407", "I35408", "I35409", "I35411",
+  "I35412", "I35414", "I35415", "I35416", "I35417", "I35418", "I35419", "I35421",
+  "I35422", "I35423", "I35425", "I35426", "I35427", "I35436", "I35437", "I35438",
+  "I35440", "I35441", "I35442", "I35443", "I35444", "I35445", "I35450", "I35451",
+  "I35452", "I35453", "I35454", "I35460", "I35461", "I35462", "I35465", "I35466",
+  "I35467", "I35469", "I35470", "I35471", "I35561", "I35583", "I35910", "I35911",
+  "I35912", "I35913", "I35929", "I35930", "I35931", "I35932", "I35933", "I35934",
+  "I35935", "I35936", "I35950", "I35951", "I35952", "I35953", "I36193", "I36194",
+  "I35390", "I135419", "I135401", "I135951", "I35424"
+)
+
 
 # Reorder columns and rows of qpWave_heat according to desired_order
 desired_order_indices <- match(desired_order, uniquePops)
@@ -149,8 +197,7 @@ qpWave_heat_col[is.na(qpWave_heat_col)] = "white"
 
 ###  Heatmap matrix with color values
 ## Change margin sizes here by replacing the 1st and 4th value in "mar"
-png("qpWave_Avar_paper_Sarengrad_noOrder.png", units="cm", width=40, height=40, res=600) #can change width and height
-#pdf("qpWave_Avar_paper_Sarengrad.pdf", width=20, height=20) #can change width and height
+png("UPDATE_Model2.png", units="cm", width=40, height=40, res=600) #can change width and height
 
 par(mar = c(13,0.5,0.5,13), mgp = c(3,0.5,0), xpd=NA)
 
