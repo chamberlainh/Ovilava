@@ -88,6 +88,7 @@ qpWave_batch_load = read.table(file = "table_batch_qpWave", fill = TRUE, sep = "
 qpWave_batch_load[,6] = paste0(qpWave_batch_load$A,"---",qpWave_batch_load$B)
 qpWave_batch_load[,7] = paste0(qpWave_batch_load$B,"---",qpWave_batch_load$A)
 
+
 pops1 = unique(qpWave_batch_load$A)
 pops2 = unique(qpWave_batch_load$B)
 
@@ -145,9 +146,9 @@ desired_order <- c(
   "I35440", "I35441", "I35442", "I35443", "I35444", "I35445", "I35450", "I35451",
   "I35452", "I35453", "I35454", "I35460", "I35461", "I35462", "I35465", "I35466",
   "I35467", "I35469", "I35470", "I35471", "I35561", "I35583", "I35910", "I35911",
-  "I35912", "I35913", "I35929", "I35930", "I35931", "I35932", "I35933", "I35934",
+  "I35912", "I35913", "I35929", "I35931", "I35932", "I35933", "I35934",
   "I35935", "I35936", "I35950", "I35951", "I35952", "I35953", "I36193", "I36194",
-  "I135951", "I35424", "I35390", "I135419", "I135401"
+  "I35951", "I35424", "I35419", "I35401"
 )
 
 
@@ -157,7 +158,6 @@ qpWave_heat_reordered <- qpWave_heat[desired_order_indices, desired_order_indice
 
 # Replace original qpWave_heat with the reordered matrix
 qpWave_heat <- qpWave_heat_reordered
-
 
 
 ###########################
